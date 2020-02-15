@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <error.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -68,12 +69,12 @@ int main(int argc, char* argv[])
 	    exit(0);
 	}
 
-	// START DEBUG
+	/*// START DEBUG
 	for (int i = 0; i < numArgs; i++)
 	{
 	   printf("%s\n", commandArgs[i]); 
 	}
-	// END DEBUG 
+	// END DEBUG*/ 
 
 
         /* Fork a child process to execute the command and return 
@@ -82,7 +83,7 @@ int main(int argc, char* argv[])
          * or child and whether or not the fork() succeeded
          */
 
-	//childPid = fork();
+	childPid = fork();
 
         if (!childPid) /* We forked no child, we ARE the child */
         {
@@ -92,7 +93,9 @@ int main(int argc, char* argv[])
              * user has asked for.  
              */
 
-	    
+	    execvp(commandArgs[0], commandArgs);
+
+	    // TODO Use errno to check for execvp error	(FNFE)	    
         }
         else if (childPid == -1) 
         {
@@ -105,6 +108,8 @@ int main(int argc, char* argv[])
              * Wait for the child to finish before we prompt
              * again.
              */
+
+	    wait(NULL);
         }
 
     } /* while */
