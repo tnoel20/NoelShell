@@ -63,8 +63,7 @@ int main(int argc, char* argv[])
         /* If the user entered 'exit' then call the exit() system call
          * to terminate the process
          */
-
-	if (!strcmp(command, exitCmd))
+	if (!strcmp(commandArgs[0], exitCmd))
 	{
 	    exit(0);
 	}
@@ -95,7 +94,8 @@ int main(int argc, char* argv[])
 
 	    execvp(commandArgs[0], commandArgs);
 
-	    // TODO Use errno to check for execvp error	(FNFE)	    
+	    // TODO Use errno to check for execvp error	(FNFE)?
+	    // MAYBE NOT NECESSARY??	    
         }
         else if (childPid == -1) 
         {
@@ -110,6 +110,9 @@ int main(int argc, char* argv[])
              */
 
 	    wait(NULL);
+
+	    // TODO Implement detached process functionality;
+	    // If detached, don't wait
         }
 
     } /* while */
