@@ -8,26 +8,26 @@
 #include <string.h>
 #include <unistd.h>
 
-// Might need to modify this later
 #define COMMAND_BUFFER_SIZE 25600
 #define MAX_ARGS 256
 
 int main(int argc, char* argv[])
 {
     
-    /* Constant declarations */ 
+    /* Sundry Strings */ 
     const char* userPrompt = "% ";
-
-    /* Variable declarations */
+    const char* delim = " \n\r";
+    const char* exitCmd = "exit";
+    const char* detachSwitch = "&";
+    
+    /* Variable Declarations */
     char command[COMMAND_BUFFER_SIZE];
     char* commandArgs[MAX_ARGS]; /* Max number */
     int childPid = 0;
     int argCount = 0;
     int numArgs = 0;
+    int detached = 0;
 
-    /* Sundry Strings */
-    const char* delim = " \n\r";
-    const char* exitCmd = "exit";
 
     while(1) /* Repeat forever */
     {
@@ -54,11 +54,22 @@ int main(int argc, char* argv[])
 	    commandArgs[argCount] = strtok(NULL, delim);
 	}
 
+	/* Check to see if specified process is to be detached */
+	detached = !strcmp(commandArgs[argCount-1], detachSwitch);
+
+	/* Don't want the detachSwitch to be passed
+	 * as an argument if it is present.
+	 */
+	if (detached)
+	{	
+	    commandArgs[argCount-1] = NULL;
+	    argCount--;
+	}
+
 	numArgs = argCount;
 	
 	/* Reset the argument counter */
 	argCount = 0;
-	
 
         /* If the user entered 'exit' then call the exit() system call
          * to terminate the process
@@ -73,7 +84,9 @@ int main(int argc, char* argv[])
 	{
 	   printf("%s\n", commandArgs[i]); 
 	}
-	// END DEBUG*/ 
+	*/
+	//printf("DETACHED: %d\n", detached);
+	// END DEBUG 
 
 
         /* Fork a child process to execute the command and return 
@@ -106,13 +119,13 @@ int main(int argc, char* argv[])
         {
             /* We're still executing in the parent process.
              * Wait for the child to finish before we prompt
-             * again.
+             * again if the child process is not detached
              */
+	    if (!detached)
+	    {
+	        wait(NULL);
+	    }
 
-	    wait(NULL);
-
-	    // TODO Implement detached process functionality;
-	    // If detached, don't wait
         }
 
     } /* while */
