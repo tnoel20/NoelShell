@@ -118,6 +118,11 @@ int main(int argc, char* argv[])
         else if (childPid == -1) 
         {
             /* An error occured during the fork - print it */
+	    if (errno)
+	    {
+	        perror("Could not fork child");
+		exit(EXIT_FAILURE);
+	    }
 
         }
         else /* childPid is the PID of the child */
@@ -132,9 +137,11 @@ int main(int argc, char* argv[])
 	    }
 	    /* If the child process is detached, reset
 	     * the detached flag for future children
+	     * and print the job number of the detached child
 	     */
 	    else
 	    {
+	        printf("Job %d\n", childPid);
 	        detached = false;
 	    }
 
