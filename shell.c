@@ -55,7 +55,10 @@ int main(int argc, char* argv[])
 	    commandArgs[argCount] = strtok(NULL, delim);
 	}
 
-	/* Check to see if specified process is to be detached */
+	/* Check to see if specified process is to be detached;
+	 * negated because strcmp returns 0 if the strings match
+	 * and, in this case, a match indicates detachment
+	 */
 	detached = !strcmp(commandArgs[argCount-1], detachSwitch);
 
 	/* Don't want the detachSwitch to be passed
@@ -133,7 +136,7 @@ int main(int argc, char* argv[])
              */
 	    if (!detached)
 	    {
-	        wait(NULL);
+	        waitpid(childPid, NULL, 0);
 	    }
 	    /* If the child process is detached, reset
 	     * the detached flag for future children
