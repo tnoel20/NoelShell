@@ -12,6 +12,11 @@
 #define COMMAND_BUFFER_SIZE 25600
 #define MAX_ARGS 256
 
+
+/* Prototypes */
+void changeDirectory(char* path);
+
+
 int main(int argc, char* argv[])
 {
     
@@ -99,6 +104,7 @@ int main(int argc, char* argv[])
          * or child and whether or not the fork() succeeded
          */
 
+	// TODO Shouldn't fork if "cd" has been called
 	childPid = fork();
 
         if (!childPid) /* We forked no child, we ARE the child */
@@ -153,3 +159,19 @@ int main(int argc, char* argv[])
     } /* while */
 
 } /* my shell */
+
+
+void changeDirectory(char* path)
+{
+
+    /* Adjust any known special path symbols */
+
+    /* If path not prepended with '/', then prepend path with
+     * the current working directory.
+     */
+
+    /* Change the current working directory (chdir()) to the amended
+     * path string AND alter the PWD environment variable (setenv())
+     */
+
+}
