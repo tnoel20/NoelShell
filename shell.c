@@ -2,11 +2,12 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <error.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define COMMAND_BUFFER_SIZE 25600
 #define MAX_ARGS 256
@@ -26,7 +27,7 @@ int main(int argc, char* argv[])
     int childPid = 0;
     int argCount = 0;
     int numArgs = 0;
-    int detached = 0;
+    bool detached = false;
 
 
     while(1) /* Repeat forever */
@@ -76,7 +77,7 @@ int main(int argc, char* argv[])
          */
 	if (!strcmp(commandArgs[0], exitCmd))
 	{
-	    exit(0);
+	    exit(EXIT_SUCCESS);
 	}
 
 	/*// START DEBUG
@@ -106,9 +107,13 @@ int main(int argc, char* argv[])
              */
 
 	    execvp(commandArgs[0], commandArgs);
-
-	    // TODO Use errno to check for execvp error	(FNFE)?
-	    // MAYBE NOT NECESSARY??	    
+	    
+	    /* Check to see if command was valid */
+	    if (errno)
+	    {
+	        perror("Command not found");
+		exit(EXIT_FAILURE);
+	    }	    
         }
         else if (childPid == -1) 
         {
@@ -124,6 +129,13 @@ int main(int argc, char* argv[])
 	    if (!detached)
 	    {
 	        wait(NULL);
+	    }
+	    /* If the child process is detached, reset
+	     * the detached flag for future children
+	     */
+	    else
+	    {
+	        detached = false;
 	    }
 
         }
