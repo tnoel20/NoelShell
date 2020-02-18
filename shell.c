@@ -9,12 +9,14 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define COMMAND_BUFFER_SIZE 25600
 #define MAX_ARGS 256
+#define COMMAND_BUFFER_SIZE 32768 
+#define MAX_PATH_LEN 4096
 
 
 /* Prototypes */
-void changeDirectory(char* path);
+void changeDirectory(char* path, char* prevDirectory);
+void launchJob(char** commandArgs, bool* detached);
 
 
 int main(int argc, char* argv[])
@@ -25,15 +27,18 @@ int main(int argc, char* argv[])
     const char* delim = " \n\r";
     const char* exitCmd = "exit";
     const char* detachSwitch = "&";
-    
+    const char* changeDir = "cd";
+
     /* Variable Declarations */
-    char command[COMMAND_BUFFER_SIZE];
     char* commandArgs[MAX_ARGS]; /* Max number */
-    int childPid = 0;
+    char command[COMMAND_BUFFER_SIZE];
+    char prevDirectory[MAX_PATH_LEN];
     int argCount = 0;
     int numArgs = 0;
     bool detached = false;
 
+    /* Initialize prevDirectory */
+    getcwd(prevDirectory, MAX_PATH_LEN);
 
     while(1) /* Repeat forever */
     {
@@ -88,80 +93,86 @@ int main(int argc, char* argv[])
 	    exit(EXIT_SUCCESS);
 	}
 
-	/*// START DEBUG
-	for (int i = 0; i < numArgs; i++)
+
+        if (strcmp(commandArgs[0], changeDir))
 	{
-	   printf("%s\n", commandArgs[i]); 
+	    launchJob(commandArgs, &detached);
 	}
-	*/
-	//printf("DETACHED: %d\n", detached);
-	// END DEBUG 
-
-
-        /* Fork a child process to execute the command and return 
-         * the result of the fork() in the childPid variable so 
-         * we know whether we're now executing as the parent 
-         * or child and whether or not the fork() succeeded
-         */
-
-	// TODO Shouldn't fork if "cd" has been called
-	childPid = fork();
-
-        if (!childPid) /* We forked no child, we ARE the child */
-        {
-            /* We're now executing in the context of the child process.
-             * Use execvp() or execlp() to replace this program in 
-             * the process' memory with the executable command the 
-             * user has asked for.  
-             */
-
-	    execvp(commandArgs[0], commandArgs);
-	    
-	    /* Check to see if command was valid */
-	    if (errno)
-	    {
-	        perror("Command not found");
-		exit(EXIT_FAILURE);
-	    }	    
-        }
-        else if (childPid == -1) 
-        {
-            /* An error occured during the fork - print it */
-	    if (errno)
-	    {
-	        perror("Could not fork child");
-		exit(EXIT_FAILURE);
-	    }
-
-        }
-        else /* childPid is the PID of the child */
-        {
-            /* We're still executing in the parent process.
-             * Wait for the child to finish before we prompt
-             * again if the child process is not detached
-             */
-	    if (!detached)
-	    {
-	        waitpid(childPid, NULL, 0);
-	    }
-	    /* If the child process is detached, reset
-	     * the detached flag for future children
-	     * and print the job number of the detached child
-	     */
-	    else
-	    {
-	        printf("Job %d\n", childPid);
-	        detached = false;
-	    }
-
-        }
+	else
+	{
+	    changeDirectory(commandArgs[1], prevDirectory);
+	}
 
     } /* while */
 
 } /* my shell */
 
 
-void changeDirectory(char* path)
+void launchJob(char** commandArgs, bool* detached)
+{   
+    int childPid = 0;
+    
+    /* Fork a child process to execute the command and return 
+     * the result of the fork() in the childPid variable so 
+     * we know whether we're now executing as the parent 
+     * or child and whether or not the fork() succeeded
+     */
+    
+    // For any command other than "cd"
+    childPid = fork();
+        
+    if (!childPid) /* We forked no child, we ARE the child */
+    {
+	/* We're now executing in the context of the child process.
+	 * Use execvp() or execlp() to replace this program in 
+	 * the process' memory with the executable command the 
+	 * user has asked for.  
+	 */
+        
+	 execvp(commandArgs[0], commandArgs);
+        
+	 /* Check to see if command was valid */
+	 if (errno == ENOENT)
+	 {
+	    perror("Command not found");
+	    exit(EXIT_FAILURE);
+	 }	    
+    }
+    else if (childPid == -1) 
+    {
+	/* An error occured during the fork - print it */
+	if (errno == ECHILD)
+	{
+	    perror("Could not fork child");
+	}
+        
+    }
+    else /* childPid is the PID of the child */
+    {
+	/* We're still executing in the parent process.
+	 * Wait for the child to finish before we prompt
+	 * again if the child process is not detached
+	 */
+	if (!*detached)
+	{
+	    waitpid(childPid, NULL, 0);
+	}
+	/* If the child process is detached, reset
+	 * the detached flag for future children
+	 * and print the job number of the detached child
+	 */
+	else
+	{
+	    printf("Job %d\n", childPid);
+	    *detached = false;
+	}
+        
+    }
+    
+}
+
+
+void changeDirectory(char* path, char* prevDirectory)
 {
 
     /* Adjust any known special path symbols */
@@ -173,5 +184,7 @@ void changeDirectory(char* path)
     /* Change the current working directory (chdir()) to the amended
      * path string AND alter the PWD environment variable (setenv())
      */
-
+     
+     printf("Consider it cd'd!\n");
+     return NULL;
 }
