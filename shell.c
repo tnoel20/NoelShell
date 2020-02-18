@@ -37,9 +37,6 @@ int main(int argc, char* argv[])
     int numArgs = 0;
     bool detached = false;
 
-    /* Initialize prevDirectory */
-    getcwd(prevDirectory, MAX_PATH_LEN);
-
     while(1) /* Repeat forever */
     {
         /* Display a prompt */
@@ -47,7 +44,6 @@ int main(int argc, char* argv[])
 
         /* Read a command from the user */
 	fgets(command, COMMAND_BUFFER_SIZE, stdin);
-
 
         /* Parse the string into the command portion and
          * an array of pointers to argument strings using the blank
@@ -174,7 +170,6 @@ void launchJob(char** commandArgs, bool* detached)
 
 void changeDirectory(char* path, char* prevDirectory)
 {
-
     /* Adjust any known special path symbols */
 
     /* If path not prepended with '/', then prepend path with
@@ -184,7 +179,16 @@ void changeDirectory(char* path, char* prevDirectory)
     /* Change the current working directory (chdir()) to the amended
      * path string AND alter the PWD environment variable (setenv())
      */
-     
-     printf("Consider it cd'd!\n");
-     return NULL;
+    if (*(path) == '/')
+    {
+        getcwd(prevDirectory, MAX_PATH_LEN);
+        chdir(path);
+	// 1 is an overwrite switch
+	setenv("PWD", path, 1);
+    }
+    else
+    {    
+        printf("Consider it cd'd!\n");
+    }
+
 }
