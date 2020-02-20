@@ -17,6 +17,12 @@
 /* Prototypes */
 void changeDirectory(char* path, char* prevDirectory);
 void launchJob(char** commandArgs, bool* detached);
+void moveBackDir(char* path, char* prevDir);
+void moveHomeDir(char* path, char* prevDir);
+void moveUpDir(char* path, char* prevDir);
+void moveAbsoluteDir(char* path, char* prevDir);
+void moveRelativeDir(char* path, char* prevDir);
+void moveDownDir(char* path, char* prevDir);
 
 
 int main(int argc, char* argv[])
@@ -169,85 +175,132 @@ void launchJob(char** commandArgs, bool* detached)
 
 void changeDirectory(char* path, char* prevDirectory)
 {
-    char currentDirectory[MAX_PATH_LEN];
-    char* thisDirectory;
-
-    /* Adjust any known special path symbols */
-
-    /* If path not prepended with '/', then prepend path with
-     * the current working directory.
-     */
-
-    /* Change the current working directory (chdir()) to the amended
-     * path string AND alter the PWD environment variable (setenv())
-     */
-
-    /* If the argument succeeding "cd" is "-" or if there is
-     * no argument after "cd", then change directory to the
-     * most previous directory
-     */
-
+    /* Check if returning to previous directory */
     if (!path || !strcmp(path, "-"))
     {
-        getcwd(currentDirectory, MAX_PATH_LEN);
-        chdir(prevDirectory);
-	setenv("PWD", prevDirectory, 1);
-	strncpy(prevDirectory, currentDirectory, MAX_PATH_LEN);
+	moveBackDir(path, prevDirectory);
     }
+    /* Check if returning home */
     else if (!strcmp(path, "~"))
     {
-    	getcwd(prevDirectory, MAX_PATH_LEN);
-	strncpy(currentDirectory, getenv("HOME"), MAX_PATH_LEN);
-	chdir(currentDirectory);
-	setenv("PWD", currentDirectory, 1);
+	moveHomeDir(path, prevDirectory);
     }
+    /* Check if moving one node up the filesystem tree */
     else if (!strcmp(path, ".."))
     {
-	getcwd(prevDirectory, MAX_PATH_LEN);
-	strncpy(currentDirectory, prevDirectory, MAX_PATH_LEN);
-        thisDirectory = strrchr(currentDirectory, '/');
-	
-	/* If this is the first and last instance of '/',
-	 * then we need to move up to the root directory
-	 * and we want to keep the '/' intact in the current
-	 * directory string
-	 */
-	if (thisDirectory == strchr(currentDirectory, '/'))
-	{
-	    *(thisDirectory + 1) = '\0';
-	}
-	else
-	{
-	    *thisDirectory = '\0';
-	}
-
-	chdir(currentDirectory);
-	setenv("PWD", currentDirectory, 1);
+	moveUpDir(path, prevDirectory);
     }
+    /* Check if absolute path specified */
     else if (*(path) == '/')
     {
-        getcwd(prevDirectory, MAX_PATH_LEN);
-        chdir(path);
-	setenv("PWD", path, 1);
+	moveAbsoluteDir(path, prevDirectory);
     }
+    /* Check if relative path specified */
     else if (*(path) == '.')
-    {	
-        getcwd(prevDirectory, MAX_PATH_LEN);
-	strncpy(currentDirectory, prevDirectory, MAX_PATH_LEN);
-	strncat(currentDirectory, path+1, MAX_PATH_LEN-1);
-        chdir(currentDirectory);
-	setenv("PWD", currentDirectory, 1);
+    {
+        moveRelativeDir(path, prevDirectory);	    
     }
-    /* If the argument succeeding "cd" is "-" or if there is
-     * no argument after "cd", then change directory to the
-     * most previous directory
-     */
+    /* Else local directory has been specified */
     else
-    {   
-	// CHECK IF VALID DIRECTORY IN PWD OTHERWISE 
-        getcwd(prevDirectory, MAX_PATH_LEN);
-	chdir(path);
-	getcwd(currentDirectory, MAX_PATH_LEN);
-	setenv("PWD", currentDirectory, 1);
+    {
+        moveDownDir(path, prevDirectory);   
     }
+
+    // ERRNO!!!!!!
+}
+
+
+void moveBackDir(char* path, char* prevDir)
+{
+    char currentDirectory[MAX_PATH_LEN];
+
+    /* Moving to the previous directory */
+    getcwd(currentDirectory, MAX_PATH_LEN);
+    chdir(prevDir);
+    setenv("PWD", prevDir, 1);
+    strncpy(prevDir, currentDirectory, MAX_PATH_LEN);
+}
+
+
+void moveHomeDir(char* path, char* prevDir)
+{
+    char currentDirectory[MAX_PATH_LEN];
+
+    /* Move to the home directory using
+     * the appropriate environment variable
+     */
+    getcwd(prevDir, MAX_PATH_LEN);
+    strncpy(currentDirectory, getenv("HOME"), MAX_PATH_LEN);
+    chdir(currentDirectory);
+    setenv("PWD", currentDirectory, 1);
+}
+
+
+void moveUpDir(char* path, char* prevDir)
+{
+    char currentDirectory[MAX_PATH_LEN];
+    char* thisDirectory;
+    
+    /* Getting a pointer to the last '/' character
+     * in the current directory
+     */
+    getcwd(prevDir, MAX_PATH_LEN);
+    strncpy(currentDirectory, prevDir, MAX_PATH_LEN);
+    thisDirectory = strrchr(currentDirectory, '/');
+	
+    /* If this is the first and last instance of '/',
+     * then we need to move up to the root directory
+     * and we want to keep the '/' intact in the current
+     * directory string
+     */
+    if (thisDirectory == strchr(currentDirectory, '/'))
+    {
+        *(thisDirectory + 1) = '\0';
+    }
+    else
+    {
+        *thisDirectory = '\0';
+    }
+
+    chdir(currentDirectory);
+    setenv("PWD", currentDirectory, 1);
+}
+
+
+void moveAbsoluteDir(char* path, char* prevDir)
+{
+    /* Move into the directory specified
+     * by the given absolute path
+     */
+    getcwd(prevDir, MAX_PATH_LEN);
+    chdir(path);
+    setenv("PWD", path, 1);
+}
+
+
+void moveRelativeDir(char* path, char* prevDir)
+{
+    char currentDirectory[MAX_PATH_LEN];
+   
+    /* Move to the directory specified by
+     * the given relative path and update
+     * the previousDirectory string
+     */ 
+    getcwd(prevDir, MAX_PATH_LEN);
+    strncpy(currentDirectory, prevDir, MAX_PATH_LEN);
+    strncat(currentDirectory, path+1, MAX_PATH_LEN-1);
+    chdir(currentDirectory);
+    setenv("PWD", currentDirectory, 1);
+}
+
+
+void moveDownDir(char* path, char* prevDir)
+{
+    char currentDirectory[MAX_PATH_LEN];
+
+    // HANDLE ERRNO
+    getcwd(prevDir, MAX_PATH_LEN);
+    chdir(path);
+    getcwd(currentDirectory, MAX_PATH_LEN);
+    setenv("PWD", currentDirectory, 1);
 }
