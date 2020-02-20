@@ -34,7 +34,6 @@ int main(int argc, char* argv[])
     char command[COMMAND_BUFFER_SIZE];
     char prevDirectory[MAX_PATH_LEN];
     int argCount = 0;
-    int numArgs = 0;
     bool detached = false;
 
     /* Initialize prevDirectory */
@@ -79,8 +78,6 @@ int main(int argc, char* argv[])
 	    argCount--;
 	}
 
-	numArgs = argCount;
-
 	/* Reset the argument counter */
 	argCount = 0;
 
@@ -92,7 +89,7 @@ int main(int argc, char* argv[])
 	    exit(EXIT_SUCCESS);
 	}
 
-
+        /* Execute the given command */
         if (strcmp(commandArgs[0], changeDir))
 	{
 	    launchJob(commandArgs, &detached);
@@ -117,7 +114,6 @@ void launchJob(char** commandArgs, bool* detached)
      * or child and whether or not the fork() succeeded
      */
     
-    // For any command other than "cd"
     childPid = fork();
         
     if (!childPid) /* We forked no child, we ARE the child */
@@ -174,6 +170,7 @@ void launchJob(char** commandArgs, bool* detached)
 void changeDirectory(char* path, char* prevDirectory)
 {
     char currentDirectory[MAX_PATH_LEN];
+    char* thisDirectory;
 
     /* Adjust any known special path symbols */
 
@@ -190,43 +187,67 @@ void changeDirectory(char* path, char* prevDirectory)
      * most previous directory
      */
 
-    if (!path || *path == '-')
+    if (!path || !strcmp(path, "-"))
     {
         getcwd(currentDirectory, MAX_PATH_LEN);
         chdir(prevDirectory);
 	setenv("PWD", prevDirectory, 1);
 	strncpy(prevDirectory, currentDirectory, MAX_PATH_LEN);
     }
+    else if (!strcmp(path, "~"))
+    {
+    	getcwd(prevDirectory, MAX_PATH_LEN);
+	strncpy(currentDirectory, getenv("HOME"), MAX_PATH_LEN);
+	chdir(currentDirectory);
+	setenv("PWD", currentDirectory, 1);
+    }
+    else if (!strcmp(path, ".."))
+    {
+	getcwd(prevDirectory, MAX_PATH_LEN);
+	strncpy(currentDirectory, prevDirectory, MAX_PATH_LEN);
+        thisDirectory = strrchr(currentDirectory, '/');
+	
+	/* If this is the first and last instance of '/',
+	 * then we need to move up to the root directory
+	 * and we want to keep the '/' intact in the current
+	 * directory string
+	 */
+	if (thisDirectory == strchr(currentDirectory, '/'))
+	{
+	    *(thisDirectory + 1) = '\0';
+	}
+	else
+	{
+	    *thisDirectory = '\0';
+	}
+
+	chdir(currentDirectory);
+	setenv("PWD", currentDirectory, 1);
+    }
     else if (*(path) == '/')
     {
-    
         getcwd(prevDirectory, MAX_PATH_LEN);
-    
         chdir(path);
-    
 	setenv("PWD", path, 1);
     }
-
-    //if (strcmp(path, ".."))
-    //{
-        
-    //}
-    
     else if (*(path) == '.')
-    {
+    {	
         getcwd(prevDirectory, MAX_PATH_LEN);
-	strncat(prevDirectory, path+1, MAX_PATH_LEN-1);
-        chdir(path);
-	// 1 is an overwrite switch
-	setenv("PWD", path, 1);
+	strncpy(currentDirectory, prevDirectory, MAX_PATH_LEN);
+	strncat(currentDirectory, path+1, MAX_PATH_LEN-1);
+        chdir(currentDirectory);
+	setenv("PWD", currentDirectory, 1);
     }
     /* If the argument succeeding "cd" is "-" or if there is
      * no argument after "cd", then change directory to the
      * most previous directory
      */
     else
-    {    
-        printf("Consider it cd'd!\n");
+    {   
+	// CHECK IF VALID DIRECTORY IN PWD OTHERWISE 
+        getcwd(prevDirectory, MAX_PATH_LEN);
+	chdir(path);
+	getcwd(currentDirectory, MAX_PATH_LEN);
+	setenv("PWD", currentDirectory, 1);
     }
-
 }
