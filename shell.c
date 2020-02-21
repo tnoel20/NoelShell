@@ -17,12 +17,12 @@
 /* Prototypes */
 void changeDirectory(char* path, char* prevDirectory);
 void launchJob(char** commandArgs, bool* detached);
-void moveBackDir(char* path, char* prevDir);
-void moveHomeDir(char* path, char* prevDir);
-void moveUpDir(char* path, char* prevDir);
-void moveAbsoluteDir(char* path, char* prevDir);
-void moveRelativeDir(char* path, char* prevDir);
-void moveDownDir(char* path, char* prevDir);
+int moveBackDir(char* path, char* prevDir);
+int moveHomeDir(char* path, char* prevDir);
+int moveUpDir(char* path, char* prevDir);
+int moveAbsoluteDir(char* path, char* prevDir);
+int moveRelativeDir(char* path, char* prevDir);
+int moveDownDir(char* path, char* prevDir);
 
 
 int main(int argc, char* argv[])
@@ -100,14 +100,15 @@ int main(int argc, char* argv[])
 	{
 	    launchJob(commandArgs, &detached);
 	}
+	/* Else builtin cd utility specified */
 	else
 	{
 	    changeDirectory(commandArgs[1], prevDirectory);
 	}
 
-    } /* while */
+    } 
 
-} /* my shell */
+} 
 
 
 void launchJob(char** commandArgs, bool* detached)
@@ -175,71 +176,82 @@ void launchJob(char** commandArgs, bool* detached)
 
 void changeDirectory(char* path, char* prevDirectory)
 {
+    int chdirStatus = 0;
+
     /* Check if returning to previous directory */
     if (!path || !strcmp(path, "-"))
     {
-	moveBackDir(path, prevDirectory);
+	chdirStatus = moveBackDir(path, prevDirectory);
     }
     /* Check if returning home */
     else if (!strcmp(path, "~"))
     {
-	moveHomeDir(path, prevDirectory);
+	chdirStatus = moveHomeDir(path, prevDirectory);
     }
     /* Check if moving one node up the filesystem tree */
     else if (!strcmp(path, ".."))
     {
-	moveUpDir(path, prevDirectory);
+	chdirStatus = moveUpDir(path, prevDirectory);
     }
     /* Check if absolute path specified */
     else if (*(path) == '/')
     {
-	moveAbsoluteDir(path, prevDirectory);
+	chdirStatus = moveAbsoluteDir(path, prevDirectory);
     }
     /* Check if relative path specified */
     else if (*(path) == '.')
     {
-        moveRelativeDir(path, prevDirectory);	    
+        chdirStatus = moveRelativeDir(path, prevDirectory);	    
     }
     /* Else local directory has been specified */
     else
     {
-        moveDownDir(path, prevDirectory);   
+        chdirStatus = moveDownDir(path, prevDirectory);   
     }
 
-    // ERRNO!!!!!!
+    /* If an error occurred, address it */
+    if (chdirStatus)
+    {
+        perror("Could not move to directory specified");
+    }
 }
 
 
-void moveBackDir(char* path, char* prevDir)
+int moveBackDir(char* path, char* prevDir)
 {
     char currentDirectory[MAX_PATH_LEN];
+    int chdirStatus = 0;
 
     /* Moving to the previous directory */
     getcwd(currentDirectory, MAX_PATH_LEN);
-    chdir(prevDir);
+    chdirStatus = chdir(prevDir);
     setenv("PWD", prevDir, 1);
     strncpy(prevDir, currentDirectory, MAX_PATH_LEN);
+    return chdirStatus;
 }
 
 
-void moveHomeDir(char* path, char* prevDir)
+int moveHomeDir(char* path, char* prevDir)
 {
     char currentDirectory[MAX_PATH_LEN];
+    int chdirStatus = 0;
 
     /* Move to the home directory using
      * the appropriate environment variable
      */
     getcwd(prevDir, MAX_PATH_LEN);
     strncpy(currentDirectory, getenv("HOME"), MAX_PATH_LEN);
-    chdir(currentDirectory);
+    chdirStatus = chdir(currentDirectory);
     setenv("PWD", currentDirectory, 1);
+    return chdirStatus;
 }
 
 
-void moveUpDir(char* path, char* prevDir)
+int moveUpDir(char* path, char* prevDir)
 {
     char currentDirectory[MAX_PATH_LEN];
     char* thisDirectory;
+    int chdirStatus = 0;
     
     /* Getting a pointer to the last '/' character
      * in the current directory
@@ -262,26 +274,31 @@ void moveUpDir(char* path, char* prevDir)
         *thisDirectory = '\0';
     }
 
-    chdir(currentDirectory);
+    chdirStatus = chdir(currentDirectory);
     setenv("PWD", currentDirectory, 1);
+    return chdirStatus;
 }
 
 
-void moveAbsoluteDir(char* path, char* prevDir)
+int moveAbsoluteDir(char* path, char* prevDir)
 {
+    int chdirStatus = 0;
+
     /* Move into the directory specified
      * by the given absolute path
      */
     getcwd(prevDir, MAX_PATH_LEN);
-    chdir(path);
+    chdirStatus = chdir(path);
     setenv("PWD", path, 1);
+    return chdirStatus;
 }
 
 
-void moveRelativeDir(char* path, char* prevDir)
+int moveRelativeDir(char* path, char* prevDir)
 {
     char currentDirectory[MAX_PATH_LEN];
-   
+    int chdirStatus = 0;
+
     /* Move to the directory specified by
      * the given relative path and update
      * the previousDirectory string
@@ -289,18 +306,21 @@ void moveRelativeDir(char* path, char* prevDir)
     getcwd(prevDir, MAX_PATH_LEN);
     strncpy(currentDirectory, prevDir, MAX_PATH_LEN);
     strncat(currentDirectory, path+1, MAX_PATH_LEN-1);
-    chdir(currentDirectory);
+    chdirStatus = chdir(currentDirectory);
     setenv("PWD", currentDirectory, 1);
+    return chdirStatus;
 }
 
 
-void moveDownDir(char* path, char* prevDir)
+int moveDownDir(char* path, char* prevDir)
 {
     char currentDirectory[MAX_PATH_LEN];
+    int chdirStatus = 0;
 
-    // HANDLE ERRNO
+    /* Move to local directory specified by path */
     getcwd(prevDir, MAX_PATH_LEN);
-    chdir(path);
+    chdirStatus = chdir(path);
     getcwd(currentDirectory, MAX_PATH_LEN);
     setenv("PWD", currentDirectory, 1);
+    return chdirStatus;
 }
